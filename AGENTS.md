@@ -49,7 +49,8 @@ Main files:
   (`SwitchMatrixPIO/*.pio`, `SwitchMatrix8x16.pio`), PWM outputs including
   fast-flip safety. `PwmDevices` writes through a `PwmOutput` (`PwmOutput.h`):
   GPIO PWM by default, `SamBus/SamBusOutput.h` on the `SAM_IO` board.
-- `src/IODevices/SamBus/*`: `SAM_IO` board (type `0x05`). `SamBusFrame` builds
+- `src/IODevices/SamBus/*`: `SAM_IO` board (type `0x05`), all in that folder
+  (its `README.md` lists the few touch points elsewhere). `SamBusFrame` builds
   one lamp frame of SAM bus commands (10 lamp lines, coil software PWM per
   line, edge-sorted lamp PWM inside a line, aux strobed boards); it is pure C++
   and covered by `test/test_sam_bus`. `SamBusDriver` plays frames through
