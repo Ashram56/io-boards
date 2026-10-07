@@ -6,6 +6,11 @@ over its CPU bus (J1) instead of to GPIO PWM. Everything else (protocol, event
 dispatcher, PwmDevices pulse logic and fast-flip safety, config handling,
 watchdog) is upstream code, unchanged.
 
+The hardware is in Ashram56/Stern-SAM-CPU-PPUC, `hardware/sam_io_board`:
+IO_16_8_1 with its inputs and output stage replaced by the bus interface on
+GPIO 3-18 (`SamBusPins.h`). RS485, the address DIP, the LED and the special
+output (WS2812 on GPIO 29) work as on IO_16_8_1.
+
 To review SAM_IO, read this folder, then the touch points below. Nothing
 else differs from upstream.
 
@@ -27,7 +32,7 @@ else differs from upstream.
 | `src/IODevices/PwmOutput.h` (new) | output interface; `GpioPwmOutput` is the old `pinMode`/`analogWrite` behaviour |
 | `src/IODevices/PwmDevices.h/.cpp` | `analogWrite(port[i], x)` becomes `writeOutput(i, x)`, plus `setOutput()`. Default output is GPIO, so other boards behave as before |
 | `src/IOBoardController.h/.cpp` | one `SamIoBoard*` member, created in `begin()` on boards with `kCapSamBus`; `registerPwmOutput()` checks ports with `allowsOutput()` and skips the PWM channel bookkeeping on SAM_IO |
-| `src/PPUCBoardTypes.h` | `kCapSamBus`, the `kSamIo` profile, `Profile::allowsOutput()` (same as `allowsPwm()` on every other board) |
+| `src/PPUCBoardTypes.h` | `kCapSamBus`, the `kSamIo` profile (no GPIO outputs or inputs, LED string on GPIO 29), `Profile::allowsOutput()` (same as `allowsPwm()` on every other board) |
 | `src/PPUCProtocolV2.h` | board type `0x05` `SAM_IO` |
 | `platformio.ini`, `.github/workflows/io-boards.yml` | `SAM_IO` environment and CI build |
 | `test/test_board_profiles`, `test/test_sam_bus` | tests |

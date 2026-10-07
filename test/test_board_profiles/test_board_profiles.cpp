@@ -22,7 +22,8 @@ uint8_t countBits(uint32_t mask) {
 
 const uint8_t kAllTypes[] = {
     ppuc::v2::kBoardTypeIo16_8_1, ppuc::v2::kBoardTypeIo16x8Matrix,
-    ppuc::v2::kBoardTypeOut8x10, ppuc::v2::kBoardTypeOpto16};
+    ppuc::v2::kBoardTypeOut8x10, ppuc::v2::kBoardTypeOpto16,
+    ppuc::v2::kBoardTypeSamIo};
 
 }  // namespace
 
@@ -191,6 +192,8 @@ void sam_io_takes_sam_numbers_and_no_gpio(void) {
   TEST_ASSERT_EQUAL_UINT8(ppuc::v2::kBoardTypeSamIo, p.type);
   TEST_ASSERT_TRUE(p.has(kCapSamBus));
   TEST_ASSERT_EQUAL_HEX32(0, p.inputPins | p.pwmPins | p.lampPins);
+  // The special output is kept from IO_16_8_1.
+  TEST_ASSERT_TRUE(p.allowsLedString(29));
   // Forcing the bus pins low would strobe the IO board.
   TEST_ASSERT_EQUAL_HEX32(0, p.safeOffPins);
   for (uint8_t pin = 0; pin < 32; pin++) {
@@ -217,6 +220,7 @@ void sam_io_takes_sam_numbers_and_no_gpio(void) {
 void other_boards_take_outputs_on_their_pwm_pins(void) {
   for (uint8_t type : kAllTypes) {
     const Profile p = profileFor(type);
+    if (p.has(kCapSamBus)) continue;
     for (uint8_t pin = 0; pin < 32; pin++) {
       TEST_ASSERT_EQUAL(p.allowsPwm(pin), p.allowsOutput(pin, false));
       TEST_ASSERT_EQUAL(p.allowsPwm(pin), p.allowsOutput(pin, true));

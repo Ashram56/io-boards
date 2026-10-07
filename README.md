@@ -150,9 +150,10 @@ the machine. Switches stay on separate PPUC switch boards.
 The board scans the lamp matrix itself (10 lines of 250 us, 400 Hz) and
 keeps feeding the driver board's watchdog with lamp strobes, also when the
 host is gone. Lamps get 8-bit brightness by PWM inside each line; coil power
-below 255 is software PWM over lamp lines. Pins are in
-`src/IODevices/SamBus/SamBusPins.h` (data, address, IOSTB, buffer direction
-and enable, driver board reset).
+below 255 is software PWM over lamp lines. The hardware is IO_16_8_1
+with its inputs and output stage replaced by the bus interface (Ashram56/Stern-SAM-CPU-PPUC,
+`hardware/sam_io_board`); RS485, the address DIP, the LED and the special
+output are unchanged. Bus pins are in `src/IODevices/SamBus/SamBusPins.h`.
 
 ## V2 Switch Refresh
 

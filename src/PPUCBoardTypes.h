@@ -276,21 +276,26 @@ constexpr Profile kOut8x10 = {
      {12, 11, 10, 9, 8, 7, 6, 5, 4, 3}},
 };
 
-// SAM_IO: no output stage of its own. Plugged into a Stern SAM IO power
-// driver board's CPU connector (J1), it forwards every coil, flasher and lamp
-// to that board's registers (IODevices/SamBus). Ports are SAM numbers, see
-// allowsOutput(). GPIOs 3-18 are the bus, so there are no switch inputs, and
-// no safe-off pins: driving the bus low would strobe the IO board. The
-// watchdog switches its outputs off through the bus instead, and the IO
-// board's own watchdog drops everything if the lamp strobes stop.
+// SAM_IO: IO_16_8_1 with the inputs and the output stage removed and a bus
+// interface to a Stern SAM IO power driver board in their place (hardware:
+// Ashram56/Stern-SAM-CPU-PPUC, hardware/sam_io_board). It forwards every coil,
+// flasher and lamp to that board's registers (IODevices/SamBus). Ports are SAM
+// numbers, see allowsOutput().
+//
+// GPIO 3-18 are the bus (IODevices/SamBus/SamBusPins.h), so there are no
+// switch inputs; GPIO 19-24, 26 and 27 are not connected. No safe-off pins:
+// driving the bus low would strobe the IO board. The watchdog switches its
+// outputs off through the bus instead, and the IO board's own watchdog drops
+// everything if the lamp strobes stop. RS485, the address ladder, the LED and
+// the special output on GPIO 29 are as on IO_16_8_1.
 constexpr Profile kSamIo = {
     ppuc::v2::kBoardTypeSamIo,
-    kCapPwmOutputs | kCapSamBus,
+    kCapPwmOutputs | kCapSamBus | kCapAddressableLeds,
     /*inputPins*/ 0,
     /*pwmPins*/ 0,
     /*lampPins*/ 0,
     /*safeOffPins*/ 0,
-    /*ledPin*/ 0,
+    /*ledPin*/ 29,
     /*matrix*/ {0, 0, 0, 0},
     /*strobedMatrix*/ {0, 0, 0, {0}, 0, 0},
     /*lampMatrix*/ {0, 0, {0}, {0}},
