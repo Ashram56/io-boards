@@ -12,6 +12,8 @@
 #include "IODevices/LampMatrix.h"
 #include "IODevices/PwmDevices.h"
 #include "IODevices/StrobedSwitchMatrix.h"
+#include "IODevices/SamBus/SamBusDriver.h"
+#include "IODevices/SamBus/SamBusOutput.h"
 #include "IODevices/SwitchMatrix.h"
 #include "IODevices/Switches.h"
 #include "PPUC.h"
@@ -39,6 +41,9 @@ class IOBoardController : public EventListener {
   bool isInitialized() const { return m_initialized; }
   bool isRunning() const { return running; }
 
+  // Drops every output at once, from the watchdog. GPIO outputs are handled
+  // there directly; this covers outputs that are not GPIOs (SAM_IO).
+
  private:
   int readBoardSelectorRaw() const;
   void initializeBoardIdentity();
@@ -49,6 +54,8 @@ class IOBoardController : public EventListener {
 
   // Each is null on a board that does not have it - see PPUCBoardTypes.h.
   PwmDevices *_pwmDevices;
+  sambus::Driver *_samBus = nullptr;
+  SamBusOutput *_samBusOutput = nullptr;
   Switches *_switches;
   SwitchMatrix *_switchMatrix;
   StrobedSwitchMatrix *_strobedSwitchMatrix;

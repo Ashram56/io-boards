@@ -134,6 +134,26 @@ See `ppuc/docs/EM_GAMES.md` for the configuration reference and
 
 WIP, see [PPUC.org](https://ppuc.org).
 
+#### SAM_IO: Stern SAM driver board
+
+The `SAM_IO` build (board type `0x05`, a proposal) drives an original Stern
+SAM IO power driver board over its CPU bus connector (J1) instead of local
+MOSFETs: one PPUC board is the entry point for every coil, flasher and lamp of
+the machine. Switches stay on separate PPUC switch boards.
+
+| Device | Port |
+|---|---|
+| Coils 1-32 (driver board), 33-40 (aux coil latch, reg 0xB bit 6) | SAM coil number |
+| Matrix lamps (`PWM` type `lamp`) | SAM lamp number 1-80 |
+| Strobed aux boards (reg 0xB bits 3, 4, 5, 7) | 200 + (strobe bit - 3) * 8 + bit |
+
+The board scans the lamp matrix itself (10 lines of 250 us, 400 Hz) and
+keeps feeding the driver board's watchdog with lamp strobes, also when the
+host is gone. Lamps get 8-bit brightness by PWM inside each line; coil power
+below 255 is software PWM over lamp lines. Pins are in
+`src/IODevices/SamBus/SamBusPins.h` (data, address, IOSTB, buffer direction
+and enable, driver board reset).
+
 ## V2 Switch Refresh
 
 The v2 host can send `kFrameSwitchRefresh (0x0D)` as a zero-payload host frame.

@@ -120,6 +120,19 @@ void IOBoardController::begin() {
     if (kProfile.has(ppuc::board::kCapPwmOutputs)) {
       _pwmDevices = new PwmDevices(_eventDispatcher);
     }
+    if (kProfile.has(ppuc::board::kCapSamBus)) {
+      // Outputs go to the SAM IO board. Started before anything else claims
+      // a PIO, so its lamp strobes (and the IO board's watchdog) run from
+      // boot, with every output off until the host configures them.
+      _samBus = new sambus::Driver();
+      if (_samBus->begin()) {
+        _samBusOutput = new SamBusOutput(_samBus->frame());
+        _pwmDevices->setOutput(_samBusOutput);
+      } else {
+        CrossLinkDebugger::debug(
+            "SAM bus: no free PIO state machine or DMA channel");
+      }
+    }
     if (kProfile.has(ppuc::board::kCapDedicatedSwitches)) {
       _switches = new Switches(boardId, _eventDispatcher);
     }
@@ -309,25 +322,36 @@ void IOBoardController::registerPwmOutput(byte pwmType) {
     return;
   }
 
-  if (!_pwmDevices || !kProfile.allowsPwm(port)) {
+  if (!_pwmDevices ||
+      !kProfile.allowsOutput(port, pwmType == PWM_TYPE_LAMP) ||
+      (_samBus && pwmType == PWM_TYPE_SHAKER)) {
     reportConfigError();
     return;
   }
-  if (_strobedSwitchMatrix && _strobedSwitchMatrix->isActive() &&
-      kProfile.isStrobePin(port)) {
-    // The matrix scan owns this pin.
-    reportConfigError();
-    return;
-  }
-  for (uint8_t pin = 0; pin < 32; pin++) {
-    if ((pwmPinsInUse & (1u << pin)) != 0 &&
-        ppuc::board::sharesPwmChannel(pin, port)) {
-      // Whatever is written to one of these two pins comes out of both.
+  if (_samBus) {
+    // Ports are SAM numbers on the IO board, not GPIOs: no strobe pins or
+    // shared PWM channels to protect.
+    if (!_samBusOutput) {
       reportConfigError();
       return;
     }
+  } else {
+    if (_strobedSwitchMatrix && _strobedSwitchMatrix->isActive() &&
+        kProfile.isStrobePin(port)) {
+      // The matrix scan owns this pin.
+      reportConfigError();
+      return;
+    }
+    for (uint8_t pin = 0; pin < 32; pin++) {
+      if ((pwmPinsInUse & (1u << pin)) != 0 &&
+          ppuc::board::sharesPwmChannel(pin, port)) {
+        // Whatever is written to one of these two pins comes out of both.
+        reportConfigError();
+        return;
+      }
+    }
+    pwmPinsInUse |= ppuc::board::pinBit(port);
   }
-  pwmPinsInUse |= ppuc::board::pinBit(port);
 
   switch (pwmType) {
     case PWM_TYPE_SOLENOID:  // Coil
@@ -430,6 +454,7 @@ void IOBoardController::handleEvent(ConfigEvent *event) {
         break;
 
       case CONFIG_TOPIC_SWITCHES:
+        if (!ppuc::board::self().has(ppuc::board::kCapDedicatedSwitches)) break;
         switch (event->key) {
           case CONFIG_TOPIC_PORT:
             port = event->value;

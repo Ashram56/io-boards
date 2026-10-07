@@ -44,8 +44,8 @@ void PwmDevices::registerSolenoid(byte p, byte n, byte pow, uint16_t minPT,
   }
   stopEngaged[index] = false;
 
-  pinMode(p, OUTPUT);
-  analogWrite(p, 0);
+  _output->attach(type[index], p);
+  _output->write(type[index], p, 0);
 }
 
 void PwmDevices::registerFlasher(byte p, byte n, byte pow) {
@@ -71,8 +71,8 @@ void PwmDevices::registerFlasher(byte p, byte n, byte pow) {
   fastSwitchManagedActive[index] = false;
   fastSwitchWaitForRelease[index] = false;
 
-  pinMode(p, OUTPUT);
-  analogWrite(p, 0);
+  _output->attach(type[index], p);
+  _output->write(type[index], p, 0);
 }
 
 void PwmDevices::registerLamp(byte p, byte n, byte pow) {
@@ -98,14 +98,14 @@ void PwmDevices::registerLamp(byte p, byte n, byte pow) {
   fastSwitchManagedActive[index] = false;
   fastSwitchWaitForRelease[index] = false;
 
-  pinMode(p, OUTPUT);
-  analogWrite(p, 0);
+  _output->attach(type[index], p);
+  _output->write(type[index], p, 0);
 }
 
 void PwmDevices::off() {
   for (uint8_t i = 0; i < last; i++) {
     // Turn off PWM output.
-    analogWrite(port[i], 0);
+    writeOutput(i, 0);
     activated[i] = 0;
     currentPower[i] = 0;
     scheduled[i] = 0;
@@ -138,7 +138,7 @@ void PwmDevices::reset() {
 }
 
 void PwmDevices::deactivateOutput(byte i) {
-  analogWrite(port[i], 0);
+  writeOutput(i, 0);
   activated[i] = 0;
   currentPower[i] = 0;
   scheduled[i] = false;
@@ -263,7 +263,7 @@ void PwmDevices::update() {
       // again. Only for a switch-driven output: one the host commands waits for
       // the host to ask again, because a motor that stopped at the end of its
       // travel has arrived, not failed.
-      analogWrite(port[i], power[i]);
+      writeOutput(i, power[i]);
       activated[i] = _ms;
       currentPower[i] = power[i];
       scheduled[i] = false;
@@ -312,7 +312,7 @@ void PwmDevices::update() {
                  (timePassed > holdPowerActivationTime[i])) {
         // Reduce the power of the activated output if the hold power activation
         // time pased since the activation.
-        analogWrite(port[i], holdPower[i]);
+        writeOutput(i, holdPower[i]);
         currentPower[i] = holdPower[i];
         CrossLinkDebugger::debug(
             "Reduced power of PWM device on port %d to power %d after %dms",
@@ -338,7 +338,7 @@ void PwmDevices::updateSolenoidOrFlasher(bool targetState, byte i) {
   if (targetState && activated[i] == 0) {
     // Event received to activate the output and output isn't activated already.
     // Activate it!
-    analogWrite(port[i], power[i]);
+    writeOutput(i, power[i]);
     // Rememebr when it got activated.
     activated[i] = _ms;
     currentPower[i] = power[i];
@@ -404,7 +404,7 @@ void PwmDevices::handleFastSwitchEvent(bool switchClosed, byte i) {
   }
 
   if (activated[i] == 0) {
-    analogWrite(port[i], power[i]);
+    writeOutput(i, power[i]);
     activated[i] = _ms;
     currentPower[i] = power[i];
     scheduled[i] = false;
@@ -430,7 +430,7 @@ void PwmDevices::handleEvent(Event *event) {
       if (fastSwitch[i] == 0) {
         continue;
       }
-      analogWrite(port[i], 0);
+      writeOutput(i, 0);
       deactivateOutput(i);
       fastSwitchClosed[i] = false;
       // Demand a fresh press: otherwise a player still holding the button gets
@@ -475,9 +475,9 @@ void PwmDevices::handleEvent(Event *event) {
         for (byte i = 0; i < last; i++) {
           if (type[i] == PWM_TYPE_LAMP && number[i] == (byte)event->eventId) {
             if (event->value) {
-              analogWrite(port[i], power[i]);
+              writeOutput(i, power[i]);
             } else if (activated[i]) {
-              analogWrite(port[i], 0);
+              writeOutput(i, 0);
             }
           }
         }
@@ -486,7 +486,7 @@ void PwmDevices::handleEvent(Event *event) {
   } else if (powerToggled) {
     for (byte i = 0; i < last; i++) {
       // Deactivate the output.
-      analogWrite(port[i], 0);
+      writeOutput(i, 0);
       // Mark the output as deactivated.
       deactivateOutput(i);
       fastSwitchWaitForRelease[i] = false;

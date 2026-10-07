@@ -1,0 +1,46 @@
+; Master of the Stern SAM IO bus (IO board J1), for the SAM_IO board.
+;
+; One 32-bit command per access, fed by DMA (SamBusDriver.cpp):
+;   bits  7:0   D7-D0 (ignored on a read)
+;   bits 11:8   A3-A0
+;   bit  12     1 = read: the byte is pushed to the RX FIFO
+;   bits 31:13  idle cycles after the access
+;
+; Pins: OUT/IN base = D0, then D1-D7, A0-A3 on the next 11 GPIOs. Side-set
+; bit 0 = IOSTB (active low), bit 1 = bus buffer DIR (1 = this board drives).
+; Clock divider 7 at 200 MHz: 35 ns per cycle. A write takes 18 cycles plus
+; its idle time, a read 23 (SamBusFrame.h relies on both numbers):
+;   address + data set up before IOSTB falls   >= 4 cycles  (140 ns)
+;   IOSTB low                                    5 cycles  (175 ns)
+;   hold after IOSTB rises (latches clock here)  7 cycles  (245 ns)
+; The original CPU board strobes for ~100 ns, holds data >= 200 ns and leaves
+; ~650 ns between writes.
+
+.program sam_bus
+.side_set 2
+.wrap_target
+    pull block          side 0b11       ; idle: IOSTB high, buffer drives J1
+    out pins, 12        side 0b11       ; address + data
+    out x, 1            side 0b11       ; read flag
+    out y, 19           side 0b11       ; idle cycles after this access
+    jmp !x write        side 0b11
+read:
+    ; OUT PINDIRS writes all 12 OUT pins: build 0xF00 (A0-A3 stay outputs,
+    ; D0-D7 become inputs) in ISR and move it to OSR.
+    mov isr, ~null      side 0b11
+    in null, 8          side 0b11
+    mov osr, isr        side 0b11
+    out pindirs, 12     side 0b11       ; release D0-D7 first
+    nop                 side 0b01       ; then turn the buffer around
+    nop                 side 0b00 [4]   ; IOSTB low: STATUS drives the bus
+    in pins, 8          side 0b00       ; sample at the end of the strobe
+    push noblock        side 0b01 [1]   ; IOSTB high
+    mov osr, ~null      side 0b11 [1]   ; buffer drives J1 again
+    out pindirs, 12     side 0b11       ; this board drives D0-D7 again
+    jmp delay           side 0b11
+write:
+    nop                 side 0b10 [4]   ; IOSTB low
+    nop                 side 0b11 [6]   ; IOSTB high: the latch clocks; hold data
+delay:
+    jmp y-- delay       side 0b11
+.wrap

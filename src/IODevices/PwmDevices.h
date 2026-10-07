@@ -10,6 +10,7 @@
 #include <Arduino.h>
 
 #include "../HighPowerOffAware.h"
+#include "PwmOutput.h"
 
 #ifndef MAX_PWM_OUTPUTS
 #define MAX_PWM_OUTPUTS 16
@@ -43,6 +44,10 @@ class PwmDevices : public HighPowerOffAware {
   void update();
   void off();
   void reset();
+
+  // Where output power goes. Defaults to the board's GPIOs; set before any
+  // output is registered.
+  void setOutput(PwmOutput* output) { _output = output ? output : &_gpioOutput; }
 
   // Overriding only the Event* overload would hide the ConfigEvent* one for
   // anyone holding a PwmDevices* directly. Virtual dispatch through
@@ -81,6 +86,10 @@ class PwmDevices : public HighPowerOffAware {
   bool stopEngaged[MAX_PWM_OUTPUTS] = {0};
   byte last = 0;
   EventDispatcher* _eventDispatcher = nullptr;
+  GpioPwmOutput _gpioOutput;
+  PwmOutput* _output = &_gpioOutput;
+
+  void writeOutput(byte i, byte value) { _output->write(type[i], port[i], value); }
 
   void updateSolenoidOrFlasher(bool targetState, byte i);
   void handleFastSwitchEvent(bool switchClosed, byte i);
