@@ -86,7 +86,7 @@ jobs:
           # One per PlatformIO environment, which is one per board type. The
           # names must match ppuc::v2::BoardTypeName() - the artefact name is
           # how a host pairs an image with the board that reported its type.
-          controller: ['IO_16_8_1', 'IO_16x8_matrix', 'Out_8x10', 'Opto_16']
+          controller: ['IO_16_8_1', 'IO_16x8_matrix', 'Out_8x10', 'Opto_16', 'SAM_IO']
 
     steps:
       - name: PPUC ${{ matrix.controller }}

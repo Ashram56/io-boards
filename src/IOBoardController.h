@@ -12,6 +12,7 @@
 #include "IODevices/LampMatrix.h"
 #include "IODevices/PwmDevices.h"
 #include "IODevices/StrobedSwitchMatrix.h"
+#include "IODevices/SamBus/SamIoBoard.h"
 #include "IODevices/SwitchMatrix.h"
 #include "IODevices/Switches.h"
 #include "PPUC.h"
@@ -49,6 +50,7 @@ class IOBoardController : public EventListener {
 
   // Each is null on a board that does not have it - see PPUCBoardTypes.h.
   PwmDevices *_pwmDevices;
+  SamIoBoard *_samIo = nullptr;  // SAM_IO only, see IODevices/SamBus
   Switches *_switches;
   SwitchMatrix *_switchMatrix;
   StrobedSwitchMatrix *_strobedSwitchMatrix;

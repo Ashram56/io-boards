@@ -47,7 +47,18 @@ Main files:
   topic handling for switches, switch matrix, and PWM outputs.
 - `src/IODevices/*`: dedicated switches (`SwitchesPIO/*.pio`), switch matrix
   (`SwitchMatrixPIO/*.pio`, `SwitchMatrix8x16.pio`), PWM outputs including
-  fast-flip safety.
+  fast-flip safety. `PwmDevices` writes through a `PwmOutput` (`PwmOutput.h`):
+  GPIO PWM by default, `SamBus/SamBusOutput.h` on the `SAM_IO` board.
+- `src/IODevices/SamBus/*`: `SAM_IO` board (type `0x05`), all in that folder
+  (its `README.md` lists the few touch points elsewhere). `SamBusFrame` builds
+  one lamp frame of SAM bus commands (10 lamp lines, coil software PWM per
+  line, edge-sorted lamp PWM inside a line, aux strobed boards); it is pure C++
+  and covered by `test/test_sam_bus`. `SamBusDriver` plays frames through
+  `sam_bus.pio` with chained DMA and falls back to an all-off frame (strobes
+  still running) when no new frame is built in time, and while the watchdog
+  holds outputs off. Its ports are SAM numbers, not GPIOs:
+  `Profile::allowsOutput()` validates them (the host should use it instead of
+  `allowsPwm()`).
 - `src/EffectDevices/*`, `src/Effects/*`, `src/EffectsController.*`: the core-1
   effect engine.
 - `src/PPUC.h`: firmware version macros, parsed by CI to validate release tags.

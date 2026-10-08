@@ -85,6 +85,7 @@ enum Capability : uint8_t {
   kCapAddressableLeds = 0x08,      // WS2812 string on the special output
   kCapStrobedSwitchMatrix = 0x10,  // matrix with dedicated strobe drivers
   kCapLampMatrix = 0x20,           // strobed lamp matrix
+  kCapSamBus = 0x40,  // outputs go to a Stern SAM IO board over its CPU bus
 };
 
 // GPIOs lo..hi inclusive as a bit mask.
@@ -138,6 +139,19 @@ struct Profile {
 
   constexpr bool allowsDirectLamp(uint8_t pin) const {
     return has(kCapLampMatrix) && (lampPins & pinBit(pin)) != 0;
+  }
+
+  // Whether an output may be registered on `port`. On most boards a port is a
+  // GPIO. On a SAM bus board it is the output's SAM number instead: coils and
+  // flashers 1-40, matrix lamps 1-80, strobed aux board lamps 200-239
+  // (IODevices/SamBus/SamBusMap.h has the details).
+  constexpr bool allowsOutput(uint8_t port, bool lamp) const {
+    if (has(kCapSamBus)) {
+      return has(kCapPwmOutputs) &&
+             (lamp ? ((port >= 1 && port <= 80) || (port >= 200 && port <= 239))
+                   : (port >= 1 && port <= 40));
+    }
+    return allowsPwm(port);
   }
 
   constexpr bool allowsLedString(uint8_t pin) const {
@@ -262,6 +276,31 @@ constexpr Profile kOut8x10 = {
      {12, 11, 10, 9, 8, 7, 6, 5, 4, 3}},
 };
 
+// SAM_IO: IO_16_8_1 with the inputs and the output stage removed and a bus
+// interface to a Stern SAM IO power driver board in their place (hardware:
+// Ashram56/Stern-SAM-CPU-PPUC, hardware/sam_io_board). It forwards every coil,
+// flasher and lamp to that board's registers (IODevices/SamBus). Ports are SAM
+// numbers, see allowsOutput().
+//
+// GPIO 3-18 are the bus (IODevices/SamBus/SamBusPins.h), so there are no
+// switch inputs; GPIO 19-24, 26 and 27 are not connected. No safe-off pins:
+// driving the bus low would strobe the IO board. The watchdog switches its
+// outputs off through the bus instead, and the IO board's own watchdog drops
+// everything if the lamp strobes stop. RS485, the address ladder, the LED and
+// the special output on GPIO 29 are as on IO_16_8_1.
+constexpr Profile kSamIo = {
+    ppuc::v2::kBoardTypeSamIo,
+    kCapPwmOutputs | kCapSamBus | kCapAddressableLeds,
+    /*inputPins*/ 0,
+    /*pwmPins*/ 0,
+    /*lampPins*/ 0,
+    /*safeOffPins*/ 0,
+    /*ledPin*/ 29,
+    /*matrix*/ {0, 0, 0, 0},
+    /*strobedMatrix*/ {0, 0, 0, {0}, 0, 0},
+    /*lampMatrix*/ {0, 0, {0}, {0}},
+};
+
 // The profile for a board type. Unknown types get an empty profile that allows
 // nothing.
 constexpr Profile profileFor(uint8_t type) {
@@ -269,6 +308,7 @@ constexpr Profile profileFor(uint8_t type) {
          : type == ppuc::v2::kBoardTypeOpto16       ? kOpto16
          : type == ppuc::v2::kBoardTypeIo16x8Matrix ? kIo16x8Matrix
          : type == ppuc::v2::kBoardTypeOut8x10      ? kOut8x10
+         : type == ppuc::v2::kBoardTypeSamIo        ? kSamIo
                                                     : Profile{};
 }
 

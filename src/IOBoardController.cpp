@@ -120,6 +120,12 @@ void IOBoardController::begin() {
     if (kProfile.has(ppuc::board::kCapPwmOutputs)) {
       _pwmDevices = new PwmDevices(_eventDispatcher);
     }
+    if (kProfile.has(ppuc::board::kCapSamBus)) {
+      _samIo = new SamIoBoard();
+      if (!_samIo->begin(_pwmDevices)) {
+        CrossLinkDebugger::debug("SAM bus: no free PIO state machine or DMA");
+      }
+    }
     if (kProfile.has(ppuc::board::kCapDedicatedSwitches)) {
       _switches = new Switches(boardId, _eventDispatcher);
     }
@@ -309,7 +315,12 @@ void IOBoardController::registerPwmOutput(byte pwmType) {
     return;
   }
 
-  if (!_pwmDevices || !kProfile.allowsPwm(port)) {
+  if (!_pwmDevices ||
+      !kProfile.allowsOutput(port, pwmType == PWM_TYPE_LAMP)) {
+    reportConfigError();
+    return;
+  }
+  if (_samIo && !_samIo->accepts(pwmType)) {
     reportConfigError();
     return;
   }
@@ -327,7 +338,8 @@ void IOBoardController::registerPwmOutput(byte pwmType) {
       return;
     }
   }
-  pwmPinsInUse |= ppuc::board::pinBit(port);
+  // On SAM_IO a port is a SAM number, not a GPIO: it takes no PWM channel.
+  if (!_samIo) pwmPinsInUse |= ppuc::board::pinBit(port);
 
   switch (pwmType) {
     case PWM_TYPE_SOLENOID:  // Coil

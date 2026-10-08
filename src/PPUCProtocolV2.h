@@ -116,6 +116,7 @@ enum BoardType : uint8_t {
   kBoardTypeIo16x8Matrix = 0x02, // IO_16x8_matrix
   kBoardTypeOut8x10 = 0x03,      // Out_8x10
   kBoardTypeOpto16 = 0x04,       // Opto_16
+  kBoardTypeSamIo = 0x05,        // SAM_IO
 };
 
 // Canonical name for a board type, or nullptr if unknown. One definition so
@@ -127,6 +128,7 @@ constexpr const char* BoardTypeName(uint8_t type) {
     case kBoardTypeIo16x8Matrix: return "IO_16x8_matrix";
     case kBoardTypeOut8x10: return "Out_8x10";
     case kBoardTypeOpto16: return "Opto_16";
+    case kBoardTypeSamIo: return "SAM_IO";
     default: return nullptr;
   }
 }
@@ -138,7 +140,7 @@ constexpr uint8_t BoardTypeFromName(const char* name) {
   if (name == nullptr) {
     return kBoardTypeUnknown;
   }
-  for (uint8_t type = kBoardTypeIo16_8_1; type <= kBoardTypeOpto16; ++type) {
+  for (uint8_t type = kBoardTypeIo16_8_1; type <= kBoardTypeSamIo; ++type) {
     const char* candidate = BoardTypeName(type);
     if (candidate == nullptr) {
       continue;
@@ -178,6 +180,8 @@ constexpr bool BoardTypeValidatedOnHardware(uint8_t type) {
     case kBoardTypeOut8x10: return false;
     // Inputs only, on the same GPIOs as IO_16_8_1, but still never run.
     case kBoardTypeOpto16: return false;
+    // Drives a Stern SAM IO board over its J1 bus. Not run on hardware yet.
+    case kBoardTypeSamIo: return false;
     default: return false;
   }
 }
